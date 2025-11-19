@@ -285,11 +285,7 @@ export default function ShipmentForm() {
               }`}
               maxLength={10}
             />
-            {shipment.shipment_code !== '-' && shipment.shipment_code && shipment.shipment_code.length > 0 && shipment.shipment_code.length !== 10 && (
-              <p className="text-xs text-red-500 mt-2">
-                Shipment code harus 10 digit angka
-              </p>
-            )}
+
           </div>
         </td>
         <td className="px-5 py-5">
