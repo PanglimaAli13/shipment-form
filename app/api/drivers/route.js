@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import pool from '@/lib/db'
+import pool from '../../../lib/db'  // Gunakan relative path
 
 export async function GET() {
   try {

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import pool from '@/lib/db'
+import pool from '../../../lib/db'  // Gunakan relative path
 
 export async function GET(request) {
   try {
@@ -27,7 +27,7 @@ export async function POST(request) {
     const { nik_driver, nama_driver, tanggal, shipment_code } = await request.json()
 
     // Validasi 10 digit angka
-    if (shipment_code && !/^\d{10}$/.test(shipment_code)) {
+    if (shipment_code && shipment_code !== '-' && !/^\d{10}$/.test(shipment_code)) {
       return NextResponse.json(
         { error: 'Shipment code harus 10 digit angka' }, 
         { status: 400 }
@@ -39,7 +39,7 @@ export async function POST(request) {
        VALUES ($1, $2, $3, $4) 
        ON CONFLICT (nik_driver, tanggal) 
        DO UPDATE SET shipment_code = $4`,
-      [nik_driver, nama_driver, tanggal, shipment_code || null]
+      [nik_driver, nama_driver, tanggal, shipment_code === '-' ? null : shipment_code]
     )
 
     return NextResponse.json({ success: true })

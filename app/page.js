@@ -77,23 +77,37 @@ export default function ShipmentForm() {
     const driver = drivers.find(d => d.nik_driver === selectedDriver)
     if (!driver) return
 
+    // Validasi 10 digit angka jika tidak kosong
+    if (shipment_code && shipment_code !== '-' && !/^\d{10}$/.test(shipment_code)) {
+        alert('Shipment code harus 10 digit angka')
+        return
+    }
+
     try {
-      await fetch('/api/shipments', {
+        const response = await fetch('/api/shipments', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+            'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          nik_driver: selectedDriver,
-          nama_driver: driver.nama_driver,
-          tanggal,
-          shipment_code: shipment_code === '-' ? '' : shipment_code
+            nik_driver: selectedDriver,
+            nama_driver: driver.nama_driver,
+            tanggal,
+            shipment_code: shipment_code === '-' ? '' : shipment_code
         })
-      })
+        })
+
+        if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Gagal menyimpan data')
+        }
+
+        alert('Data berhasil disimpan!')
     } catch (error) {
-      console.error('Error saving shipment:', error)
+        console.error('Error saving shipment:', error)
+        alert('Error: ' + error.message)
     }
-  }
+    }
 
   const formatDate = (dateString) => {
     const date = new Date(dateString)

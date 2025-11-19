@@ -1,5 +1,3 @@
-import './globals.css'
-
 export const metadata = {
   title: 'Shipment Form',
   description: 'Form Input Data Shipment Driver',
