@@ -2,9 +2,41 @@
 @tailwind components;
 @tailwind utilities;
 
+/* BACKGROUND GRADIENT YANG HIDUP DAN BERGERAK */
+body {
+  background: linear-gradient(135deg, 
+    #dbeafe 0%,     /* Biru muda */
+    #f0f9ff 25%,    /* Biru sangat muda */
+    #fdf4ff 50%,    /* Ungu muda */
+    #f0fdf4 75%,    /* Hijau muda */
+    #fef3c7 100%    /* Kuning muda */
+  );
+  background-attachment: fixed;
+  background-size: 400% 400%;
+  animation: gradientShift 3s ease infinite;
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
 @layer utilities {
   .shadow-soft {
-    box-shadow: 0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 4px 25px -3px rgba(59, 130, 246, 0.15), 0 10px 20px -2px rgba(139, 92, 246, 0.1);
   }
   
   .shadow-soft-sm {
@@ -12,13 +44,17 @@
   }
   
   .shadow-soft-lg {
-    box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.1), 0 8px 25px -3px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 10px 40px -10px rgba(59, 130, 246, 0.2), 0 8px 25px -3px rgba(139, 92, 246, 0.15);
   }
   
   .shadow-soft-xl {
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1), 0 12px 30px -8px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 25px 50px -12px rgba(59, 130, 246, 0.25), 0 12px 30px -8px rgba(139, 92, 246, 0.2);
   }
-
+  
+  .shadow-2xl {
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  }
+  
   .animate-fade-in {
     animation: fadeIn 0.3s ease-out;
   }
@@ -36,7 +72,6 @@
 }
 
 @layer base {
-  /* Custom styles untuk form elements */
   select {
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
     background-position: right 0.5rem center;
@@ -47,7 +82,6 @@
     print-color-adjust: exact;
   }
 
-  /* Hide number input spinners */
   input[type="tel"]::-webkit-inner-spin-button,
   input[type="tel"]::-webkit-outer-spin-button {
     -webkit-appearance: none;
@@ -55,20 +89,12 @@
   }
   
   input[type="tel"] {
+    -webkit-appearance: textfield;
     -moz-appearance: textfield;
+    appearance: textfield;
   }
 }
 
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-/* Custom scrollbar untuk webkit browsers */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -88,7 +114,6 @@ body {
   background: #a8a8a8;
 }
 
-/* Responsive design improvements */
 @media (max-width: 768px) {
   .table-responsive {
     font-size: 0.875rem;

@@ -1,117 +1,176 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { Calendar, Truck, Save, Search, User, CalendarDays, CheckCircle, AlertCircle, X } from 'lucide-react'
+import { Calendar, Truck, Save, Search, User, CalendarDays, CheckCircle, AlertCircle } from 'lucide-react'
+
+// Helper function untuk format date
+const formatDateHelper = (dateString) => {
+  if (!dateString) return { formatted: '', dayName: '' };
+  
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return { formatted: '', dayName: '' };
+    
+    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    const dayName = days[date.getDay()];
+    
+    return {
+      formatted: date.toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      }),
+      dayName
+    };
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return { formatted: '', dayName: '' };
+  }
+}
 
 export default function ShipmentForm() {
-  const [drivers, setDrivers] = useState([])
-  const [selectedDriver, setSelectedDriver] = useState('')
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
-  const [shipments, setShipments] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [filledShipmentCount, setFilledShipmentCount] = useState(0)
+  const [drivers, setDrivers] = useState([]);
+  const [selectedDriver, setSelectedDriver] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [shipments, setShipments] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [filledShipmentCount, setFilledShipmentCount] = useState(0);
   const [modal, setModal] = useState({
     isOpen: false,
-    type: '', // 'success_save', 'success_update', 'error'
+    type: '',
     message: ''
-  })
+  });
 
   // Fetch drivers on component mount
   useEffect(() => {
-    fetchDrivers()
-  }, [])
+    fetchDrivers();
+  }, []);
 
   // Hitung jumlah shipment terisi ketika data berubah
   useEffect(() => {
-    const filledCount = shipments.filter(shipment => 
-      shipment.shipment_code && shipment.shipment_code !== '-'
-    ).length
-    setFilledShipmentCount(filledCount)
-  }, [shipments])
+    try {
+      const filledCount = shipments.filter(shipment => 
+        shipment && shipment.shipment_code && shipment.shipment_code !== '-'
+      ).length;
+      setFilledShipmentCount(filledCount);
+    } catch (error) {
+      console.error('Error counting shipments:', error);
+      setFilledShipmentCount(0);
+    }
+  }, [shipments]);
 
   const fetchDrivers = async () => {
     try {
-      const response = await fetch('/api/drivers')
-      const data = await response.json()
-      setDrivers(data)
+      const response = await fetch('/api/drivers');
+      if (!response.ok) throw new Error('Failed to fetch drivers');
+      const data = await response.json();
+      setDrivers(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error('Error fetching drivers:', error)
+      console.error('Error fetching drivers:', error);
+      setDrivers([]);
     }
-  }
+  };
 
   const fetchShipments = async () => {
-    if (!selectedDriver || !startDate || !endDate) return
+    if (!selectedDriver || !startDate || !endDate) return;
 
-    setLoading(true)
+    setLoading(true);
     try {
       const response = await fetch(
         `/api/shipments?nik_driver=${selectedDriver}&start_date=${startDate}&end_date=${endDate}`
-      )
-      const data = await response.json()
+      );
+      
+      if (!response.ok) throw new Error('Failed to fetch shipments');
+      
+      const data = await response.json();
       
       // Generate date range and merge with existing data
-      const dateRange = generateDateRange(startDate, endDate)
+      const dateRange = generateDateRange(startDate, endDate);
       const mergedData = dateRange.map(date => {
-        const existing = data.find(s => s.tanggal === date)
+        const existing = Array.isArray(data) ? data.find(s => s && s.tanggal === date) : null;
         return {
           tanggal: date,
           shipment_code: existing?.shipment_code || '-',
           isSunday: new Date(date).getDay() === 0
-        }
-      })
+        };
+      });
       
-      setShipments(mergedData)
+      setShipments(mergedData);
     } catch (error) {
-      console.error('Error fetching shipments:', error)
-      showModal('error', 'Gagal memuat data shipment')
+      console.error('Error fetching shipments:', error);
+      showModal('error', 'Gagal memuat data shipment');
+      setShipments([]);
     }
-    setLoading(false)
-  }
+    setLoading(false);
+  };
 
   const generateDateRange = (start, end) => {
-    const dates = []
-    const startDate = new Date(start)
-    const endDate = new Date(end)
-    
-    for (let date = startDate; date <= endDate; date.setDate(date.getDate() + 1)) {
-      dates.push(date.toISOString().split('T')[0])
+    try {
+      const dates = [];
+      const startDateObj = new Date(start);
+      const endDateObj = new Date(end);
+      
+      if (isNaN(startDateObj.getTime()) || isNaN(endDateObj.getTime())) {
+        return [];
+      }
+      
+      for (let date = new Date(startDateObj); date <= endDateObj; date.setDate(date.getDate() + 1)) {
+        dates.push(date.toISOString().split('T')[0]);
+      }
+      
+      return dates;
+    } catch (error) {
+      console.error('Error generating date range:', error);
+      return [];
     }
-    
-    return dates
-  }
+  };
 
   const handleShipmentChange = (index, value) => {
-    const newShipments = [...shipments]
-    newShipments[index].shipment_code = value
-    setShipments(newShipments)
-  }
+    try {
+      const newShipments = [...shipments];
+      if (newShipments[index]) {
+        newShipments[index].shipment_code = value;
+        setShipments(newShipments);
+      }
+    } catch (error) {
+      console.error('Error handling shipment change:', error);
+    }
+  };
 
   const handleShipmentFocus = (index) => {
-    const newShipments = [...shipments]
-    if (newShipments[index].shipment_code === '-') {
-      newShipments[index].shipment_code = ''
-      setShipments(newShipments)
+    try {
+      const newShipments = [...shipments];
+      if (newShipments[index] && newShipments[index].shipment_code === '-') {
+        newShipments[index].shipment_code = '';
+        setShipments(newShipments);
+      }
+    } catch (error) {
+      console.error('Error handling shipment focus:', error);
     }
-  }
+  };
 
   const handleShipmentBlur = (index) => {
-    const newShipments = [...shipments]
-    if (!newShipments[index].shipment_code) {
-      newShipments[index].shipment_code = '-'
-      setShipments(newShipments)
+    try {
+      const newShipments = [...shipments];
+      if (newShipments[index] && !newShipments[index].shipment_code) {
+        newShipments[index].shipment_code = '-';
+        setShipments(newShipments);
+      }
+    } catch (error) {
+      console.error('Error handling shipment blur:', error);
     }
-  }
+  };
 
   const saveShipment = async (tanggal, shipment_code, isExisting) => {
-    if (!selectedDriver) return
+    if (!selectedDriver) return;
 
-    const driver = drivers.find(d => d.nik_driver === selectedDriver)
-    if (!driver) return
+    const driver = drivers.find(d => d.nik_driver === selectedDriver);
+    if (!driver) return;
 
     // Validasi 10 digit angka jika tidak kosong
     if (shipment_code && shipment_code !== '-' && !/^\d{10}$/.test(shipment_code)) {
-      showModal('error', 'Shipment code harus 10 digit angka')
-      return
+      showModal('error', 'Shipment code harus 10 digit angka');
+      return;
     }
 
     try {
@@ -126,63 +185,126 @@ export default function ShipmentForm() {
           tanggal,
           shipment_code: shipment_code === '-' ? '' : shipment_code
         })
-      })
+      });
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Gagal menyimpan data')
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Gagal menyimpan data');
       }
 
       // Tampilkan modal sukses berdasarkan apakah data baru atau update
       if (isExisting) {
-        showModal('success_update', 'Data shipment berhasil diperbarui!')
+        showModal('success_update', 'Data shipment berhasil diperbarui!');
       } else {
-        showModal('success_save', 'Data shipment berhasil disimpan!')
+        showModal('success_save', 'Data shipment berhasil disimpan!');
       }
 
       // Refresh data untuk memastikan konsistensi
-      fetchShipments()
+      fetchShipments();
     } catch (error) {
-      console.error('Error saving shipment:', error)
-      showModal('error', `Error: ${error.message}`)
+      console.error('Error saving shipment:', error);
+      showModal('error', `Error: ${error.message}`);
     }
-  }
+  };
 
   const showModal = (type, message) => {
     setModal({
       isOpen: true,
       type,
       message
-    })
-  }
+    });
+  };
 
   const closeModal = () => {
     setModal({
       isOpen: false,
       type: '',
       message: ''
-    })
-  }
-
-  const formatDate = (dateString) => {
-    const date = new Date(dateString)
-    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
-    const dayName = days[date.getDay()]
-    
-    return {
-      formatted: date.toLocaleDateString('id-ID', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      }),
-      dayName
-    }
-  }
+    });
+  };
 
   const getSelectedDriverName = () => {
-    const driver = drivers.find(d => d.nik_driver === selectedDriver)
-    return driver ? driver.nama_driver : ''
-  }
+    const driver = drivers.find(d => d.nik_driver === selectedDriver);
+    return driver ? driver.nama_driver : '';
+  };
+
+  // Render individual table row untuk menghindari render issue
+  const renderTableRow = (shipment, index) => {
+    if (!shipment) return null;
+    
+    const dateInfo = formatDateHelper(shipment.tanggal);
+    const isExistingData = shipment.shipment_code && shipment.shipment_code !== '-' && shipment.shipment_code !== '';
+    
+    return (
+      <tr 
+        key={shipment.tanggal || index}
+        className={`transition-all duration-200 hover:bg-white/50 ${
+          shipment.isSunday 
+            ? 'bg-red-50/80 hover:bg-red-100/50' 
+            : 'even:bg-gray-50/30'
+        }`}
+      >
+        <td className="px-8 py-5">
+          <div className="flex items-center gap-3">
+            <div className={`w-3 h-3 rounded-full ${
+              shipment.isSunday ? 'bg-red-400' : 'bg-blue-400'
+            }`}></div>
+            <div>
+              <span className={`font-medium text-lg ${
+                shipment.isSunday ? 'text-red-700' : 'text-gray-900'
+              }`}>
+                {dateInfo.formatted}
+              </span>
+              <div className={`text-sm ${
+                shipment.isSunday ? 'text-red-600' : 'text-gray-500'
+              }`}>
+                {dateInfo.dayName}
+              </div>
+            </div>
+          </div>
+        </td>
+        <td className="px-8 py-5">
+          <div className="max-w-xs">
+            <input
+              type="tel"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={shipment.shipment_code || ''}
+              onChange={(e) => {
+                // Hanya allow angka
+                const value = e.target.value.replace(/[^0-9]/g, '');
+                handleShipmentChange(index, value);
+              }}
+              onFocus={() => handleShipmentFocus(index)}
+              onBlur={() => handleShipmentBlur(index)}
+              placeholder="Masukkan 10 digit angka"
+              className={`w-36 px-4 py-3 rounded-xl border-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 shadow-soft-sm ${
+                shipment.shipment_code === '-' 
+                  ? 'border-gray-200 bg-gray-50/50' 
+                  : 'border-blue-100 bg-white'
+              }`}
+              maxLength={10}
+            />
+            {shipment.shipment_code !== '-' && shipment.shipment_code && shipment.shipment_code.length > 0 && shipment.shipment_code.length !== 10 && (
+              <p className="text-xs text-red-500 mt-2">
+                Shipment code harus 10 digit angka
+              </p>
+            )}
+          </div>
+        </td>
+        <td className="px-5 py-5">
+          <button
+            onClick={() => saveShipment(shipment.tanggal, shipment.shipment_code, isExistingData)}
+            disabled={!shipment.shipment_code || shipment.shipment_code === '-' || (shipment.shipment_code.length > 0 && shipment.shipment_code.length !== 10)}
+            className="group flex items-center gap-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-xl font-semibold shadow-soft-sm hover:shadow-soft disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105"
+          >
+            <Save className="w-4 h-4 group-hover:scale-110 transition-transform" />
+            {isExistingData ? 'Perbarui' : 'Simpan'}
+          </button>
+        </td>
+      </tr>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4">
@@ -263,7 +385,7 @@ export default function ShipmentForm() {
                   className="w-full px-5 py-4 rounded-2xl border-0 bg-white/70 shadow-soft-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all duration-300 appearance-none cursor-pointer"
                 >
                   <option value="">Pilih Driver</option>
-                  {drivers.map((driver) => (
+                  {Array.isArray(drivers) && drivers.map((driver) => (
                     <option key={driver.nik_driver} value={driver.nik_driver}>
                       {driver.nama_driver}
                     </option>
@@ -289,7 +411,7 @@ export default function ShipmentForm() {
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 rounded-2xl border-0 bg-white/70 shadow-soft-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all duration-300"
+                  className="w-full pl-12 pr-4 py-4 rounded-2xl border-0 bg-white/40 shadow-soft-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all duration-300"
                 />
               </div>
             </div>
@@ -319,7 +441,7 @@ export default function ShipmentForm() {
             <button
               onClick={fetchShipments}
               disabled={!selectedDriver || !startDate || !endDate || loading}
-              className="group relative bg-gradient-to-r from-blue-500 to-purple-600 text-white py-4 px-12 rounded-2xl font-semibold shadow-soft-lg hover:shadow-soft-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105 flex items-center gap-3"
+              className="group relative bg-gradient-to-r from-cyan-500 to-blue-700 text-white py-4 px-10 rounded-2xl font-semibold shadow-soft-lg hover:shadow-soft-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-105 flex items-center gap-3"
             >
               {loading ? (
                 <>
@@ -354,7 +476,7 @@ export default function ShipmentForm() {
               </div>
               <div className="text-center">
                 <div className="text-3xl font-bold text-red-600 mb-2">
-                  {shipments.filter(s => s.isSunday).length}
+                  {shipments.filter(s => s && s.isSunday).length}
                 </div>
                 <div className="text-gray-600">Hari Minggu</div>
               </div>
@@ -379,7 +501,7 @@ export default function ShipmentForm() {
                 Data Shipment
               </h2>
               <p className="text-gray-600 mt-1">
-                Periode: {formatDate(startDate).formatted} - {formatDate(endDate).formatted}
+                Periode: {formatDateHelper(startDate).formatted} - {formatDateHelper(endDate).formatted}
               </p>
             </div>
 
@@ -388,97 +510,19 @@ export default function ShipmentForm() {
               <table className="w-full">
                 <thead>
                   <tr className="bg-gray-50/80 border-b border-gray-200/60">
-                    <th className="px-8 py-5 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">
+                    <th className="px-8 py-5 text-center text-sm font-bold text-gray-700 uppercase tracking-wider">
                       Tanggal
                     </th>
-                    <th className="px-8 py-5 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">
+                    <th className="px-8 py-5 text-center text-sm font-bold text-gray-700 uppercase tracking-wider">
                       Shipment Code
                     </th>
-                    <th className="px-8 py-5 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">
+                    <th className="px-8 py-5 text-center text-sm font-bold text-gray-700 uppercase tracking-wider">
                       Aksi
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200/60">
-                  {shipments.map((shipment, index) => {
-                    const dateInfo = formatDate(shipment.tanggal)
-                    const isExistingData = shipment.shipment_code !== '-' && shipment.shipment_code !== ''
-                    
-                    return (
-                      <tr 
-                        key={shipment.tanggal}
-                        className={`transition-all duration-200 hover:bg-white/50 ${
-                          shipment.isSunday 
-                            ? 'bg-red-50/80 hover:bg-red-100/50' 
-                            : 'even:bg-gray-50/30'
-                        }`}
-                      >
-                        <td className="px-8 py-5">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-3 h-3 rounded-full ${
-                              shipment.isSunday ? 'bg-red-400' : 'bg-blue-400'
-                            }`}></div>
-                            <div>
-                              <span className={`font-medium text-lg ${
-                                shipment.isSunday ? 'text-red-700' : 'text-gray-900'
-                              }`}>
-                                {dateInfo.formatted}
-                              </span>
-                              <div className={`text-sm ${
-                                shipment.isSunday ? 'text-red-600' : 'text-gray-500'
-                              }`}>
-                                {dateInfo.dayName}
-                              </div>
-                            </div>
-                            {shipment.isSunday && (
-                              <span className="text-xs text-red-600 bg-red-100 px-3 py-1 rounded-full font-medium">
-                                Minggu
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-8 py-5">
-                          <div className="max-w-xs">
-                            <input
-                              type="tel"
-                              inputMode="numeric"
-                              pattern="[0-9]*"
-                              value={shipment.shipment_code}
-                              onChange={(e) => {
-                                // Hanya allow angka
-                                const value = e.target.value.replace(/[^0-9]/g, '')
-                                handleShipmentChange(index, value)
-                              }}
-                              onFocus={() => handleShipmentFocus(index)}
-                              onBlur={() => handleShipmentBlur(index)}
-                              placeholder="Masukkan 10 digit angka"
-                              className={`w-full px-4 py-3 rounded-xl border-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 shadow-soft-sm ${
-                                shipment.shipment_code === '-' 
-                                  ? 'border-gray-200 bg-gray-50/50' 
-                                  : 'border-blue-100 bg-white'
-                              }`}
-                              maxLength={10}
-                            />
-                            {shipment.shipment_code !== '-' && shipment.shipment_code.length > 0 && shipment.shipment_code.length !== 10 && (
-                              <p className="text-xs text-red-500 mt-2">
-                                Shipment code harus 10 digit angka
-                              </p>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-8 py-5">
-                          <button
-                            onClick={() => saveShipment(shipment.tanggal, shipment.shipment_code, isExistingData)}
-                            disabled={shipment.shipment_code === '-' || (shipment.shipment_code.length > 0 && shipment.shipment_code.length !== 10)}
-                            className="group flex items-center gap-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-xl font-semibold shadow-soft-sm hover:shadow-soft disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105"
-                          >
-                            <Save className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                            {isExistingData ? 'Perbarui' : 'Simpan'}
-                          </button>
-                        </td>
-                      </tr>
-                    )
-                  })}
+                  {shipments.map((shipment, index) => renderTableRow(shipment, index))}
                 </tbody>
               </table>
             </div>
@@ -491,7 +535,7 @@ export default function ShipmentForm() {
                   {filledShipmentCount} shipment terisi
                 </span>
                 • <span className="text-red-500 ml-2">
-                  {shipments.filter(s => s.isSunday).length} hari Minggu
+                  {shipments.filter(s => s && s.isSunday).length} hari Minggu
                 </span>
               </p>
             </div>
