@@ -91,6 +91,7 @@ export default function ShipmentForm() {
         return {
           tanggal: date,
           shipment_code: existing?.shipment_code || '-',
+          nama_driver: existing?.nama_driver || '', // ✅ TAMBAH INI
           isSunday: new Date(date).getDay() === 0
         };
       });

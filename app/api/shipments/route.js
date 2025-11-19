@@ -1,5 +1,7 @@
+//app/api/shipments/route.js
+
 import { NextResponse } from 'next/server'
-import pool from '../../../lib/db'  // Gunakan relative path
+import pool from '@/lib/db';
 
 export async function GET(request) {
   try {
@@ -9,7 +11,7 @@ export async function GET(request) {
     const end_date = searchParams.get('end_date')
 
     const result = await pool.query(
-      `SELECT tanggal, shipment_code 
+      `SELECT tanggal, shipment_code, nama_driver     // ✅ TAMBAHIN nama_driver
        FROM shipment 
        WHERE nik_driver = $1 AND tanggal BETWEEN $2 AND $3 
        ORDER BY tanggal`,
