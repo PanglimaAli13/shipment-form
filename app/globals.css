@@ -18,6 +18,21 @@
   .shadow-soft-xl {
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1), 0 12px 30px -8px rgba(0, 0, 0, 0.06);
   }
+
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 @layer base {
@@ -30,6 +45,17 @@
     padding-right: 2.5rem;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+
+  /* Hide number input spinners */
+  input[type="tel"]::-webkit-inner-spin-button,
+  input[type="tel"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  
+  input[type="tel"] {
+    -moz-appearance: textfield;
   }
 }
 

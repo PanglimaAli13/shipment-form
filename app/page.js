@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { Calendar, Truck, Save, Search, User, CalendarDays } from 'lucide-react'
+import { Calendar, Truck, Save, Search, User, CalendarDays, CheckCircle, AlertCircle, X } from 'lucide-react'
 
 export default function ShipmentForm() {
   const [drivers, setDrivers] = useState([])
@@ -9,11 +9,25 @@ export default function ShipmentForm() {
   const [endDate, setEndDate] = useState('')
   const [shipments, setShipments] = useState([])
   const [loading, setLoading] = useState(false)
+  const [filledShipmentCount, setFilledShipmentCount] = useState(0)
+  const [modal, setModal] = useState({
+    isOpen: false,
+    type: '', // 'success_save', 'success_update', 'error'
+    message: ''
+  })
 
   // Fetch drivers on component mount
   useEffect(() => {
     fetchDrivers()
   }, [])
+
+  // Hitung jumlah shipment terisi ketika data berubah
+  useEffect(() => {
+    const filledCount = shipments.filter(shipment => 
+      shipment.shipment_code && shipment.shipment_code !== '-'
+    ).length
+    setFilledShipmentCount(filledCount)
+  }, [shipments])
 
   const fetchDrivers = async () => {
     try {
@@ -49,6 +63,7 @@ export default function ShipmentForm() {
       setShipments(mergedData)
     } catch (error) {
       console.error('Error fetching shipments:', error)
+      showModal('error', 'Gagal memuat data shipment')
     }
     setLoading(false)
   }
@@ -71,7 +86,23 @@ export default function ShipmentForm() {
     setShipments(newShipments)
   }
 
-  const saveShipment = async (tanggal, shipment_code) => {
+  const handleShipmentFocus = (index) => {
+    const newShipments = [...shipments]
+    if (newShipments[index].shipment_code === '-') {
+      newShipments[index].shipment_code = ''
+      setShipments(newShipments)
+    }
+  }
+
+  const handleShipmentBlur = (index) => {
+    const newShipments = [...shipments]
+    if (!newShipments[index].shipment_code) {
+      newShipments[index].shipment_code = '-'
+      setShipments(newShipments)
+    }
+  }
+
+  const saveShipment = async (tanggal, shipment_code, isExisting) => {
     if (!selectedDriver) return
 
     const driver = drivers.find(d => d.nik_driver === selectedDriver)
@@ -79,7 +110,7 @@ export default function ShipmentForm() {
 
     // Validasi 10 digit angka jika tidak kosong
     if (shipment_code && shipment_code !== '-' && !/^\d{10}$/.test(shipment_code)) {
-      alert('Shipment code harus 10 digit angka')
+      showModal('error', 'Shipment code harus 10 digit angka')
       return
     }
 
@@ -102,25 +133,105 @@ export default function ShipmentForm() {
         throw new Error(errorData.error || 'Gagal menyimpan data')
       }
 
-      alert('Data berhasil disimpan!')
+      // Tampilkan modal sukses berdasarkan apakah data baru atau update
+      if (isExisting) {
+        showModal('success_update', 'Data shipment berhasil diperbarui!')
+      } else {
+        showModal('success_save', 'Data shipment berhasil disimpan!')
+      }
+
+      // Refresh data untuk memastikan konsistensi
+      fetchShipments()
     } catch (error) {
       console.error('Error saving shipment:', error)
-      alert('Error: ' + error.message)
+      showModal('error', `Error: ${error.message}`)
     }
+  }
+
+  const showModal = (type, message) => {
+    setModal({
+      isOpen: true,
+      type,
+      message
+    })
+  }
+
+  const closeModal = () => {
+    setModal({
+      isOpen: false,
+      type: '',
+      message: ''
+    })
   }
 
   const formatDate = (dateString) => {
     const date = new Date(dateString)
-    return date.toLocaleDateString('id-ID', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    })
+    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
+    const dayName = days[date.getDay()]
+    
+    return {
+      formatted: date.toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      }),
+      dayName
+    }
+  }
+
+  const getSelectedDriverName = () => {
+    const driver = drivers.find(d => d.nik_driver === selectedDriver)
+    return driver ? driver.nama_driver : ''
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4">
       <div className="max-w-7xl mx-auto">
+        
+        {/* Modal Component */}
+        {modal.isOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-3xl shadow-soft-xl max-w-md w-full p-8 animate-fade-in">
+              <div className="text-center">
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                  modal.type === 'error' 
+                    ? 'bg-red-100 text-red-600' 
+                    : 'bg-green-100 text-green-600'
+                }`}>
+                  {modal.type === 'error' ? (
+                    <AlertCircle className="w-8 h-8" />
+                  ) : (
+                    <CheckCircle className="w-8 h-8" />
+                  )}
+                </div>
+                
+                <h3 className={`text-xl font-bold mb-2 ${
+                  modal.type === 'error' ? 'text-red-800' : 'text-green-800'
+                }`}>
+                  {modal.type === 'success_save' && 'Berhasil Disimpan!'}
+                  {modal.type === 'success_update' && 'Berhasil Diperbarui!'}
+                  {modal.type === 'error' && 'Terjadi Kesalahan!'}
+                </h3>
+                
+                <p className="text-gray-600 mb-6">
+                  {modal.message}
+                </p>
+                
+                <button
+                  onClick={closeModal}
+                  className={`w-full py-3 px-6 rounded-xl font-semibold text-white ${
+                    modal.type === 'error' 
+                      ? 'bg-red-500 hover:bg-red-600' 
+                      : 'bg-green-500 hover:bg-green-600'
+                  } transition-all duration-200`}
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="text-center mb-12 mt-8">
           <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-blue-500 to-purple-600 rounded-3xl shadow-soft-lg mb-6">
@@ -225,6 +336,39 @@ export default function ShipmentForm() {
           </div>
         </div>
 
+        {/* Statistics Card */}
+        {shipments.length > 0 && (
+          <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-soft-xl p-6 mb-6 border border-white/60">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-blue-600 mb-2">
+                  {shipments.length}
+                </div>
+                <div className="text-gray-600">Total Hari</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-green-600 mb-2">
+                  {filledShipmentCount}
+                </div>
+                <div className="text-gray-600">Shipment Terisi</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-red-600 mb-2">
+                  {shipments.filter(s => s.isSunday).length}
+                </div>
+                <div className="text-gray-600">Hari Minggu</div>
+              </div>
+            </div>
+            {selectedDriver && (
+              <div className="text-center mt-4 pt-4 border-t border-gray-200/60">
+                <p className="text-gray-600">
+                  Driver: <span className="font-semibold text-gray-800">{getSelectedDriverName()}</span>
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Shipment Table */}
         {shipments.length > 0 && (
           <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-soft-xl overflow-hidden border border-white/60">
@@ -235,7 +379,7 @@ export default function ShipmentForm() {
                 Data Shipment
               </h2>
               <p className="text-gray-600 mt-1">
-                Periode: {formatDate(startDate)} - {formatDate(endDate)}
+                Periode: {formatDate(startDate).formatted} - {formatDate(endDate).formatted}
               </p>
             </div>
 
@@ -256,65 +400,85 @@ export default function ShipmentForm() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200/60">
-                  {shipments.map((shipment, index) => (
-                    <tr 
-                      key={shipment.tanggal}
-                      className={`transition-all duration-200 hover:bg-white/50 ${
-                        shipment.isSunday 
-                          ? 'bg-red-50/80 hover:bg-red-100/50' 
-                          : 'even:bg-gray-50/30'
-                      }`}
-                    >
-                      <td className="px-8 py-5">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-3 h-3 rounded-full ${
-                            shipment.isSunday ? 'bg-red-400' : 'bg-blue-400'
-                          }`}></div>
-                          <span className={`font-medium text-lg ${
-                            shipment.isSunday ? 'text-red-700' : 'text-gray-900'
-                          }`}>
-                            {formatDate(shipment.tanggal)}
-                          </span>
-                          {shipment.isSunday && (
-                            <span className="text-xs text-red-600 bg-red-100 px-3 py-1 rounded-full font-medium">
-                              Minggu
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-8 py-5">
-                        <div className="max-w-xs">
-                          <input
-                            type="text"
-                            value={shipment.shipment_code}
-                            onChange={(e) => handleShipmentChange(index, e.target.value)}
-                            placeholder="Masukkan 10 digit shipment code"
-                            className={`w-full px-4 py-3 rounded-xl border-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 shadow-soft-sm ${
-                              shipment.shipment_code === '-' 
-                                ? 'border-gray-200 bg-gray-50/50' 
-                                : 'border-blue-100 bg-white'
-                            }`}
-                            maxLength={10}
-                          />
-                          {shipment.shipment_code !== '-' && shipment.shipment_code.length > 0 && shipment.shipment_code.length !== 10 && (
-                            <p className="text-xs text-red-500 mt-2">
-                              Shipment code harus 10 digit angka
-                            </p>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-8 py-5">
-                        <button
-                          onClick={() => saveShipment(shipment.tanggal, shipment.shipment_code)}
-                          disabled={shipment.shipment_code === '-' || (shipment.shipment_code.length > 0 && shipment.shipment_code.length !== 10)}
-                          className="group flex items-center gap-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-xl font-semibold shadow-soft-sm hover:shadow-soft disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105"
-                        >
-                          <Save className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                          Simpan
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {shipments.map((shipment, index) => {
+                    const dateInfo = formatDate(shipment.tanggal)
+                    const isExistingData = shipment.shipment_code !== '-' && shipment.shipment_code !== ''
+                    
+                    return (
+                      <tr 
+                        key={shipment.tanggal}
+                        className={`transition-all duration-200 hover:bg-white/50 ${
+                          shipment.isSunday 
+                            ? 'bg-red-50/80 hover:bg-red-100/50' 
+                            : 'even:bg-gray-50/30'
+                        }`}
+                      >
+                        <td className="px-8 py-5">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-3 h-3 rounded-full ${
+                              shipment.isSunday ? 'bg-red-400' : 'bg-blue-400'
+                            }`}></div>
+                            <div>
+                              <span className={`font-medium text-lg ${
+                                shipment.isSunday ? 'text-red-700' : 'text-gray-900'
+                              }`}>
+                                {dateInfo.formatted}
+                              </span>
+                              <div className={`text-sm ${
+                                shipment.isSunday ? 'text-red-600' : 'text-gray-500'
+                              }`}>
+                                {dateInfo.dayName}
+                              </div>
+                            </div>
+                            {shipment.isSunday && (
+                              <span className="text-xs text-red-600 bg-red-100 px-3 py-1 rounded-full font-medium">
+                                Minggu
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-8 py-5">
+                          <div className="max-w-xs">
+                            <input
+                              type="tel"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              value={shipment.shipment_code}
+                              onChange={(e) => {
+                                // Hanya allow angka
+                                const value = e.target.value.replace(/[^0-9]/g, '')
+                                handleShipmentChange(index, value)
+                              }}
+                              onFocus={() => handleShipmentFocus(index)}
+                              onBlur={() => handleShipmentBlur(index)}
+                              placeholder="Masukkan 10 digit angka"
+                              className={`w-full px-4 py-3 rounded-xl border-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 shadow-soft-sm ${
+                                shipment.shipment_code === '-' 
+                                  ? 'border-gray-200 bg-gray-50/50' 
+                                  : 'border-blue-100 bg-white'
+                              }`}
+                              maxLength={10}
+                            />
+                            {shipment.shipment_code !== '-' && shipment.shipment_code.length > 0 && shipment.shipment_code.length !== 10 && (
+                              <p className="text-xs text-red-500 mt-2">
+                                Shipment code harus 10 digit angka
+                              </p>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-8 py-5">
+                          <button
+                            onClick={() => saveShipment(shipment.tanggal, shipment.shipment_code, isExistingData)}
+                            disabled={shipment.shipment_code === '-' || (shipment.shipment_code.length > 0 && shipment.shipment_code.length !== 10)}
+                            className="group flex items-center gap-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-xl font-semibold shadow-soft-sm hover:shadow-soft disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105"
+                          >
+                            <Save className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                            {isExistingData ? 'Perbarui' : 'Simpan'}
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
@@ -323,7 +487,10 @@ export default function ShipmentForm() {
             <div className="bg-gray-50/80 px-8 py-4 border-t border-gray-200/60">
               <p className="text-sm text-gray-600">
                 Menampilkan {shipments.length} hari • 
-                <span className="text-red-500 ml-2">
+                <span className="text-green-600 ml-2">
+                  {filledShipmentCount} shipment terisi
+                </span>
+                • <span className="text-red-500 ml-2">
                   {shipments.filter(s => s.isSunday).length} hari Minggu
                 </span>
               </p>
