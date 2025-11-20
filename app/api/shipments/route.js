@@ -11,12 +11,17 @@ export async function GET(request) {
     const end_date = searchParams.get('end_date')
 
     const result = await pool.query(
-      `SELECT tanggal, shipment_code, nama_driver     // ✅ TAMBAHIN nama_driver
-       FROM shipment 
-       WHERE nik_driver = $1 AND tanggal BETWEEN $2 AND $3 
-       ORDER BY tanggal`,
+      `SELECT 
+          to_char(tanggal, 'YYYY-MM-DD') AS tanggal,
+          shipment_code,
+          nama_driver
+      FROM shipment
+      WHERE nik_driver = $1 
+      AND tanggal BETWEEN $2 AND $3
+      ORDER BY tanggal`,
       [nik_driver, start_date, end_date]
     )
+
     
     return NextResponse.json(result.rows)
   } catch (error) {
